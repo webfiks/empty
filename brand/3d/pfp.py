@@ -161,7 +161,7 @@ sc.render.image_settings.file_format = 'PNG'
 
 from bpy_extras.object_utils import world_to_camera_view
 RIG = {n: tuple(bpy.data.objects[n].location) for n in ('key','fill','rim','top','kick')}
-SHOTS = {'steel-turned': ('steel', -16, 9, 0.0), 'steel-front': ('steel', -16, 9, 0.0), 'black-front': ('black', -16, 9, 0.15), 'steel-hero': ('steel', -30, 3, -1.3)}
+SHOTS = {'steel-up': ('steel', -16, float(args.get('elup', -3.5)), -0.4), 'steel-turned': ('steel', -16, 9, 0.0), 'steel-front': ('steel', -16, 9, 0.0), 'black-front': ('black', -16, 9, 0.15), 'steel-hero': ('steel', -30, 3, -1.3)}
 FILL, CY = float(args.get('fill', 0.74)), float(args.get('cy', 0.54))
 
 
@@ -173,7 +173,7 @@ def wverts():
 os.makedirs(OUT, exist_ok=True)
 for name in args.get('shots', ','.join(SHOTS)).split(','):
     mk, az, el, ev = SHOTS[name]; sc.view_settings.exposure = ev
-    W.rotation_euler = (0, 0, math.radians(float(args.get('rotz', 0)) if name == 'steel-turned' else 0))
+    W.rotation_euler = (0, 0, math.radians(float(args.get('rotz', 0)) if name in ('steel-turned', 'steel-up') else 0))
     from mathutils import Matrix
     lr = math.radians(float(args.get('rotz', 0)) * float(args.get('lightk', 0))) if name == 'steel-turned' else 0
     Rm = Matrix.Rotation(lr, 4, 'Z')
@@ -182,6 +182,7 @@ for name in args.get('shots', ','.join(SHOTS)).split(','):
         o.rotation_euler = (CENTER - o.location).to_track_quat('-Z', 'Y').to_euler()
     bpy.context.view_layer.update()
     W.data.materials.clear(); W.data.materials.append(MATFN[mk]())
+    cd.lens = float(args.get('lensup', 50)) if name == 'steel-up' else 85
     a, e = math.radians(az), math.radians(el)
     dirv = Vector((math.sin(a)*math.cos(e), -math.cos(a)*math.cos(e), math.sin(e)))
     dist = 28; cd.shift_x = cd.shift_y = 0
