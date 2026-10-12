@@ -198,6 +198,29 @@ for name in args.get('shots', ','.join(SHOTS)).split(','):
     t = (12 + R - CENTER.y) / -dirv.y; P = CENTER - dirv*t + Vector((0, 0, float(args.get('glowz', 1.5))))
     wo.location = (P.x, 7, P.z + 5)
     wo.rotation_euler = (P - wo.location).to_track_quat('-Z', 'Y').to_euler()
+    if args.get('optical'):
+        # optical centering: centre the W's visual mass (its silhouette centroid), then lift it slightly
+        import numpy as np, tempfile
+        em = bpy.data.materials.get('maskem') or bpy.data.materials.new('maskem'); em.use_nodes = True
+        nn = em.node_tree.nodes; nn.clear(); e_ = nn.new('ShaderNodeEmission'); o_ = nn.new('ShaderNodeOutputMaterial')
+        em.node_tree.links.new(e_.outputs['Emission'], o_.inputs['Surface'])
+        keep = (W.data.materials[0], sc.render.resolution_x, sc.cycles.samples, sc.cycles.use_denoising, cd.dof.use_dof, sc.view_settings.view_transform)
+        W.data.materials[0] = em; fl.hide_render = True
+        sc.render.resolution_x = sc.render.resolution_y = 512; sc.cycles.samples = 4; sc.cycles.use_denoising = False
+        cd.dof.use_dof = False; sc.view_settings.view_transform = 'Standard'
+        OY = float(args.get('opty', 0.47))
+        for _ in range(3):
+            tmp = os.path.join(tempfile.gettempdir(), 'wmask.png'); sc.render.filepath = tmp
+            bpy.ops.render.render(write_still=True)
+            img = bpy.data.images.load(tmp, check_existing=False)
+            px = np.array(img.pixels[:]).reshape(512, 512, 4)[::-1, :, 0]; bpy.data.images.remove(img)
+            ys, xs = np.mgrid[0:512, 0:512]; w_ = px.sum()
+            cx, cy = (px*xs).sum()/w_/512, (px*ys).sum()/w_/512      # cy measured from the top
+            cd.shift_x += cx - 0.5; cd.shift_y += OY - cy
+            print('centroid', round(cx, 4), round(cy, 4), flush=True)
+        W.data.materials[0] = keep[0]; fl.hide_render = False
+        sc.render.resolution_x = sc.render.resolution_y = keep[1]; sc.cycles.samples = keep[2]; sc.cycles.use_denoising = keep[3]
+        cd.dof.use_dof = keep[4]; sc.view_settings.view_transform = keep[5]
     sw = bpy.data.objects['sweep']; sw.data.energy = 0
     if name == 'steel-turned':
         n = (Matrix.Rotation(W.rotation_euler.z, 4, 'Z') @ Vector((0, -1, 0))).normalized()
