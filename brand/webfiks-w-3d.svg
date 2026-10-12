@@ -3,9 +3,9 @@
   <defs>
     <path id="w" d="M0 0H16.5L31 25.5H41L35 37H21ZM26 0H43L57.5 25.5H68L61.5 37H47ZM53 0H70.5L75.2 9.4Q76.6 12.4 74.6 15.2L68 25.5H67.5Z"/>
     <radialGradient id="bg" cx="35%" cy="25%" r="85%">
-      <stop offset="0" stop-color="#4a7fd6"/>
-      <stop offset="0.55" stop-color="#2e5eaa"/>
-      <stop offset="1" stop-color="#173a78"/>
+      <stop offset="0" stop-color="#1a1a1a"/>
+      <stop offset="0.6" stop-color="#0a0a0a"/>
+      <stop offset="1" stop-color="#000000"/>
     </radialGradient>
     <linearGradient id="face" x1="0" y1="0" x2="0.35" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
@@ -25,44 +25,43 @@
     </filter>
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <rect width="512" height="512" fill="url(#vig)"/>
-  <ellipse cx="262" cy="378.2" rx="170" ry="16" fill="#061636" opacity="0.45" filter="url(#shadow)"/>
+  <ellipse cx="262" cy="378.2" rx="170" ry="16" fill="#2e5eaa" opacity="0.35" filter="url(#shadow)"/>
   <g transform="translate(84.00 155.83) scale(4.3)">
     <g stroke-linejoin="round">
-      <use href="#w" transform="translate(3.40 6.80)" fill="#081634"/>
-      <use href="#w" transform="translate(3.30 6.60)" fill="#081736"/>
-      <use href="#w" transform="translate(3.20 6.40)" fill="#091838"/>
-      <use href="#w" transform="translate(3.10 6.20)" fill="#09193a"/>
-      <use href="#w" transform="translate(3.00 6.00)" fill="#0a1a3c"/>
-      <use href="#w" transform="translate(2.90 5.80)" fill="#0a1b3e"/>
-      <use href="#w" transform="translate(2.80 5.60)" fill="#0b1c40"/>
-      <use href="#w" transform="translate(2.70 5.40)" fill="#0b1d42"/>
-      <use href="#w" transform="translate(2.60 5.20)" fill="#0c1e44"/>
-      <use href="#w" transform="translate(2.50 5.00)" fill="#0c1f45"/>
-      <use href="#w" transform="translate(2.40 4.80)" fill="#0d2047"/>
-      <use href="#w" transform="translate(2.30 4.60)" fill="#0d2149"/>
-      <use href="#w" transform="translate(2.20 4.40)" fill="#0e224b"/>
-      <use href="#w" transform="translate(2.10 4.20)" fill="#0e234d"/>
-      <use href="#w" transform="translate(2.00 4.00)" fill="#0f244f"/>
-      <use href="#w" transform="translate(1.90 3.80)" fill="#0f2551"/>
-      <use href="#w" transform="translate(1.80 3.60)" fill="#102653"/>
-      <use href="#w" transform="translate(1.70 3.40)" fill="#102755"/>
-      <use href="#w" transform="translate(1.60 3.20)" fill="#102857"/>
-      <use href="#w" transform="translate(1.50 3.00)" fill="#112959"/>
-      <use href="#w" transform="translate(1.40 2.80)" fill="#112a5b"/>
-      <use href="#w" transform="translate(1.30 2.60)" fill="#122b5d"/>
-      <use href="#w" transform="translate(1.20 2.40)" fill="#122c5f"/>
-      <use href="#w" transform="translate(1.10 2.20)" fill="#132d61"/>
-      <use href="#w" transform="translate(1.00 2.00)" fill="#132e63"/>
-      <use href="#w" transform="translate(0.90 1.80)" fill="#142f65"/>
-      <use href="#w" transform="translate(0.80 1.60)" fill="#143066"/>
-      <use href="#w" transform="translate(0.70 1.40)" fill="#153168"/>
-      <use href="#w" transform="translate(0.60 1.20)" fill="#15326a"/>
-      <use href="#w" transform="translate(0.50 1.00)" fill="#16336c"/>
-      <use href="#w" transform="translate(0.40 0.80)" fill="#16346e"/>
-      <use href="#w" transform="translate(0.30 0.60)" fill="#173570"/>
-      <use href="#w" transform="translate(0.20 0.40)" fill="#173672"/>
-      <use href="#w" transform="translate(0.10 0.20)" fill="#183774"/>
+      <use href="#w" transform="translate(3.40 6.80)" fill="#0e2252"/>
+      <use href="#w" transform="translate(3.30 6.60)" fill="#0f2455"/>
+      <use href="#w" transform="translate(3.20 6.40)" fill="#102657"/>
+      <use href="#w" transform="translate(3.10 6.20)" fill="#11275a"/>
+      <use href="#w" transform="translate(3.00 6.00)" fill="#12295c"/>
+      <use href="#w" transform="translate(2.90 5.80)" fill="#132b5f"/>
+      <use href="#w" transform="translate(2.80 5.60)" fill="#142d62"/>
+      <use href="#w" transform="translate(2.70 5.40)" fill="#152e64"/>
+      <use href="#w" transform="translate(2.60 5.20)" fill="#163067"/>
+      <use href="#w" transform="translate(2.50 5.00)" fill="#163269"/>
+      <use href="#w" transform="translate(2.40 4.80)" fill="#17346c"/>
+      <use href="#w" transform="translate(2.30 4.60)" fill="#18356e"/>
+      <use href="#w" transform="translate(2.20 4.40)" fill="#193771"/>
+      <use href="#w" transform="translate(2.10 4.20)" fill="#1a3974"/>
+      <use href="#w" transform="translate(2.00 4.00)" fill="#1b3b76"/>
+      <use href="#w" transform="translate(1.90 3.80)" fill="#1c3c79"/>
+      <use href="#w" transform="translate(1.80 3.60)" fill="#1d3e7b"/>
+      <use href="#w" transform="translate(1.70 3.40)" fill="#1e407e"/>
+      <use href="#w" transform="translate(1.60 3.20)" fill="#1f4281"/>
+      <use href="#w" transform="translate(1.50 3.00)" fill="#204483"/>
+      <use href="#w" transform="translate(1.40 2.80)" fill="#214586"/>
+      <use href="#w" transform="translate(1.30 2.60)" fill="#224788"/>
+      <use href="#w" transform="translate(1.20 2.40)" fill="#23498b"/>
+      <use href="#w" transform="translate(1.10 2.20)" fill="#244b8e"/>
+      <use href="#w" transform="translate(1.00 2.00)" fill="#254c90"/>
+      <use href="#w" transform="translate(0.90 1.80)" fill="#264e93"/>
+      <use href="#w" transform="translate(0.80 1.60)" fill="#265095"/>
+      <use href="#w" transform="translate(0.70 1.40)" fill="#275298"/>
+      <use href="#w" transform="translate(0.60 1.20)" fill="#28539a"/>
+      <use href="#w" transform="translate(0.50 1.00)" fill="#29559d"/>
+      <use href="#w" transform="translate(0.40 0.80)" fill="#2a57a0"/>
+      <use href="#w" transform="translate(0.30 0.60)" fill="#2b59a2"/>
+      <use href="#w" transform="translate(0.20 0.40)" fill="#2c5aa5"/>
+      <use href="#w" transform="translate(0.10 0.20)" fill="#2d5ca7"/>
     </g>
     <use href="#w" fill="url(#face)"/>
     <use href="#w" fill="url(#shine)" opacity="0.6"/>
