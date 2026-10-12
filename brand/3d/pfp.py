@@ -201,9 +201,9 @@ ANG = {  # azimuth (deg, 0 = straight on), elevation (deg), distance
 sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'
 sc.cycles.samples = SPP; sc.cycles.adaptive_threshold = 0.008; sc.cycles.use_denoising = True
 sc.render.resolution_x = sc.render.resolution_y = RES
-sc.render.film_transparent = False
+sc.render.film_transparent = args.get('transparent') == '1'
 sc.view_settings.view_transform = 'AgX'; sc.view_settings.look = 'AgX - Medium High Contrast'
-sc.render.image_settings.file_format = 'PNG'
+sc.render.image_settings.file_format = 'PNG'; sc.render.image_settings.color_mode = 'RGBA' if args.get('transparent') == '1' else 'RGB'
 
 
 from bpy_extras.object_utils import world_to_camera_view
@@ -236,21 +236,32 @@ if args.get('env') == 'galaxy':
         WL.new(v.outputs['Distance'], mr.inputs['Value'])
         pw = WN.new('ShaderNodeMath'); pw.operation = 'POWER'; pw.inputs[1].default_value = 3
         WL.new(mr.outputs['Result'], pw.inputs[0])
-        sep = WN.new('ShaderNodeSeparateColor'); WL.new(v.outputs['Color'], sep.inputs['Color'])
+        sep = WN.new('ShaderNodeSeparateColor'); WL.new(v.outputs['Color'], sep.inputs['Color']); STARCOL.append(v)
         th = WN.new('ShaderNodeMath'); th.operation = 'GREATER_THAN'; th.inputs[1].default_value = 0.72   # only some cells hold a star
         WL.new(sep.outputs['Red'], th.inputs[0])
         m1 = WN.new('ShaderNodeMath'); m1.operation = 'MULTIPLY'; WL.new(pw.outputs['Value'], m1.inputs[0]); WL.new(th.outputs['Value'], m1.inputs[1])
         m2 = WN.new('ShaderNodeMath'); m2.operation = 'MULTIPLY'; m2.inputs[1].default_value = gain
         WL.new(m1.outputs['Value'], m2.inputs[0]); return m2
+    STARCOL = []
     a1 = starlayer(260, float(args.get('skysize', 0.12)), float(args.get('skygain', 8))); a2 = starlayer(700, float(args.get('skysize', 0.12))*1.3, float(args.get('skygain', 8))*0.5)
     st = WN.new('ShaderNodeMath'); st.operation = 'ADD'; WL.new(a1.outputs['Value'], st.inputs[0]); WL.new(a2.outputs['Value'], st.inputs[1])
     nb = WN.new('ShaderNodeTexNoise'); nb.inputs['Scale'].default_value = 1.6; nb.inputs['Detail'].default_value = 10; nb.inputs['Roughness'].default_value = 0.62
     WL.new(tcw.outputs['Generated'], nb.inputs['Vector'])
     cr = WN.new('ShaderNodeValToRGB'); e_ = cr.color_ramp.elements
-    e_[0].position = 0.45; e_[0].color = (0, 0, 0, 1); e_[1].position = 0.85; e_[1].color = (0.020, 0.011, 0.007, 1)
+    e_[0].position = 0.5; e_[0].color = (0, 0, 0, 1); e_[1].position = 0.9; e_[1].color = (0.016, 0.006, 0.010, 1)
     WL.new(nb.outputs['Fac'], cr.inputs['Fac'])
-    sc_ = WN.new('ShaderNodeCombineColor')
-    for ch in ('Red', 'Green', 'Blue'): WL.new(st.outputs['Value'], sc_.inputs[ch])
+    # stellar colour by temperature: blue-white, white, yellow, orange
+    sp_ = WN.new('ShaderNodeSeparateColor'); WL.new(STARCOL[0].outputs['Color'], sp_.inputs['Color'])
+    tr = WN.new('ShaderNodeValToRGB'); el = tr.color_ramp.elements
+    el[0].position = 0.0; el[0].color = (0.62, 0.74, 1.0, 1); el[1].position = 1.0; el[1].color = (1.0, 0.62, 0.36, 1)
+    e2 = el.new(0.35); e2.color = (0.95, 0.96, 1.0, 1); e3 = el.new(0.7); e3.color = (1.0, 0.9, 0.72, 1)
+    WL.new(sp_.outputs['Green'], tr.inputs['Fac'])
+    sc_ = WN.new('ShaderNodeMix'); sc_.data_type = 'RGBA'; sc_.blend_type = 'MULTIPLY'; sc_.inputs['Factor'].default_value = 1
+    cc_ = WN.new('ShaderNodeCombineColor')
+    for ch in ('Red', 'Green', 'Blue'): WL.new(st.outputs['Value'], cc_.inputs[ch])
+    WL.new(cc_.outputs['Color'], sc_.inputs[6]); WL.new(tr.outputs['Color'], sc_.inputs[7])
+    class _W: pass
+    _w = _W(); _w.outputs = {'Color': sc_.outputs[2]}; sc_ = _w
     ad = WN.new('ShaderNodeMix'); ad.data_type = 'RGBA'; ad.blend_type = 'ADD'; ad.inputs['Factor'].default_value = 1
     WL.new(cr.outputs['Color'], ad.inputs[6]); WL.new(sc_.outputs['Color'], ad.inputs[7])
     lp = WN.new('ShaderNodeLightPath')
@@ -261,44 +272,91 @@ if args.get('env') == 'galaxy':
     WL.new(lp.outputs['Is Camera Ray'], mx.inputs['Factor']); WL.new(dim.outputs[2], mx.inputs[6]); WL.new(ad.outputs[2], mx.inputs[7])
     WL.new(mx.outputs[2], bg.inputs['Color']); bg.inputs['Strength'].default_value = 1.0
 
-    # ---- spiral galaxy made of star particles (point cloud) ----
-    N = int(args.get('stars', 150000)); RG = float(args.get('grad', 46.0))
-    arm = rng.integers(0, 2, N)
-    r = rng.exponential(0.30, N*3); r = r[(r < 1.0) & (r > 0.015)][:N]
-    th = arm*np.pi + np.log(r/0.03 + 1)*2.4 + rng.normal(0, 0.09 + 0.14*(1 - r), N)
-    nb_ = int(N*0.22)                                     # bulge
-    rb = np.abs(rng.normal(0, 0.07, nb_)); tb = rng.uniform(0, 2*np.pi, nb_)
-    r[:nb_] = rb; th[:nb_] = tb
-    x = r*np.cos(th)*RG; y = r*np.sin(th)*RG
-    z = rng.normal(0, 1, N)*RG*(0.012 + 0.05*np.exp(-r/0.08))
-    P = np.stack([x, y, z], 1)
-    col = np.empty((N, 4), np.float32); col[:, 3] = 1
-    warm = np.array([1.0, 0.78, 0.52]); white = np.array([1.0, 0.95, 0.9]); rose = np.array([1.0, 0.55, 0.6])
-    t = np.clip(r/0.25, 0, 1)[:, None]
-    base = warm*(1 - t) + white*t
-    pick = rng.random(N) < 0.025; base[pick] = rose
-    bright = rng.lognormal(0, 0.6, N)[:, None]*(0.5*np.exp(-r/0.45) + 2.2*np.exp(-r/0.05))[:, None]
-    col[:, :3] = base*bright
-    rad = (0.05 + 0.10*rng.random(N))*RG/46*float(args.get('starsize', 3.0))
-    gm = bpy.data.meshes.new('galaxy'); gm.vertices.add(N); gm.vertices.foreach_set('co', P.ravel())
-    ca = gm.attributes.new('scol', 'FLOAT_COLOR', 'POINT'); ca.data.foreach_set('color', col.ravel())
-    ra = gm.attributes.new('srad', 'FLOAT', 'POINT'); ra.data.foreach_set('value', rad)
-    G = bpy.data.objects.new('galaxy', gm); sc.collection.objects.link(G)
+    # ---- Milky Way style barred spiral: bar + bulge, 4 log-spiral arms, young blue stars,
+    #      pink HII regions, an old yellow disk, and dark dust lanes on the arms' inner edges ----
+    RG = float(args.get('grad', 46.0)); NS = int(args.get('stars', 900000))
+    def lerp(c1, c2, t): return c1*(1 - t) + c2*t
+    OLD = np.array([1.0, 0.80, 0.56]); DISK = np.array([1.0, 0.90, 0.78]); YOUNG = np.array([0.48, 0.66, 1.0]); HII = np.array([1.0, 0.34, 0.46])
+    pitch = math.radians(float(args.get('pitch', 19))); r0 = 0.16; barang = math.radians(28)
+    def arm_theta(r, k): return k*np.pi/2 + barang + np.log(r/r0)/math.tan(pitch)
+    parts_P, parts_C, parts_R = [], [], []
+    def add(P, C, R): parts_P.append(P); parts_C.append(C); parts_R.append(R)
+    # bulge
+    n = int(NS*0.10); rb = np.abs(rng.normal(0, float(args.get('bulge', 0.055)), n)); u = rng.normal(size=(n, 3)); u /= np.linalg.norm(u, axis=1)[:, None]
+    P = u*rb[:, None]; P[:, 2] *= 0.6
+    add(P, OLD*rng.lognormal(0.5, 0.5, (n, 1))*1.6*float(args.get('bulgegain', 1.0)), np.full(n, 0.9))
+    # bar
+    n = int(NS*0.07); P = rng.normal(0, 1, (n, 3))*[0.16, 0.045, 0.03]
+    ca, sa = math.cos(barang), math.sin(barang); P = P @ np.array([[ca, sa, 0], [-sa, ca, 0], [0, 0, 1]])
+    add(P, OLD*rng.lognormal(0.3, 0.5, (n, 1))*1.2, np.full(n, 0.9))
+    # old disk (diffuse, everywhere)
+    n = int(NS*0.30); r = rng.exponential(0.28, n*2); r = r[(r > 0.04) & (r < 1)][:n]; n = len(r); t = rng.uniform(0, 2*np.pi, n)
+    P = np.stack([r*np.cos(t), r*np.sin(t), rng.normal(0, 0.012, n)], 1)
+    add(P, DISK*rng.lognormal(-0.25, 0.6, (n, 1))*np.exp(-r/0.45)[:, None], np.full(n, 1.0))
+    # arms: young stars tight to the arm ridge
+    n = int(NS*0.40); k = rng.choice(4, n, p=[0.32, 0.18, 0.32, 0.18])
+    r = r0 + rng.exponential(0.30, n*2)[:n]; keep = r < 1.0; r, k = r[keep], k[keep]; n = len(r)
+    th = arm_theta(r, k) + rng.normal(0, 0.15 + 0.09*r, n)
+    P = np.stack([r*np.cos(th), r*np.sin(th), rng.normal(0, 0.008, n)], 1)
+    mix = rng.random(n)[:, None]
+    add(P, lerp(YOUNG, DISK, mix*0.35)*rng.lognormal(-0.1, 0.8, (n, 1))*np.exp(-r/0.6)[:, None]*1.3, np.full(n, 1.0))
+    # HII regions: pink clumps on the outer edge of the arms
+    nc = int(args.get('hii', 260)); kc = rng.choice(4, nc); rc = r0 + rng.uniform(0.08, 0.85, nc)
+    tc_ = arm_theta(rc, kc) - 0.07
+    m_ = 26; P = np.repeat(np.stack([rc*np.cos(tc_), rc*np.sin(tc_), np.zeros(nc)], 1), m_, 0) + rng.normal(0, 0.009, (nc*m_, 3))*[1, 1, 0.4]
+    add(P, HII*rng.lognormal(0.2, 0.5, (nc*m_, 1))*1.4, np.full(nc*m_, 1.2))
+    P = np.concatenate(parts_P)*RG; C = np.concatenate(parts_C); RS_ = np.concatenate(parts_R)
+    rad = RS_*(0.04 + 0.05*rng.random(len(P)))*RG/46*float(args.get('starsize', 1.0))
+    col = np.concatenate([C, np.ones((len(C), 1))], 1).astype(np.float32)
+    cav = float(args.get('cavity', 0))                    # keep the logo clear: no stars inside this radius
+    # view direction in the galaxy's own frame (galaxy frame = view basis @ Rx(tilt) @ Rz(spin))
+    from mathutils import Matrix as _M
+    Minv = _M.Rotation(-math.radians(float(args.get('gspin', 30))), 3, 'Z') @ _M.Rotation(-math.radians(float(args.get('gtilt', 55))), 3, 'X')
+    vloc = np.array((Minv @ Vector((0, 0, 1)))[:]); rloc = np.array((Minv @ Vector((1, 0, 0)))[:]); uloc = np.array((Minv @ Vector((0, 1, 0)))[:])
+    DCAM = float(args.get('dcam', 20.0)); RX, RY = cav, cav*float(args.get('cavy', 0.68))
+    def clear(P_):                                     # drop stars inside the logo's silhouette cone toward the camera
+        a_ = P_ @ vloc; k_ = np.clip((DCAM - a_)/DCAM, 0.05, None)
+        x_ = (P_ @ rloc)/(RX*k_); y_ = (P_ @ uloc)/(RY*k_)
+        return ~((x_**2 + y_**2 < 1) & (a_ > -0.6))
+    if cav:
+        keep = clear(P); P, col, rad = P[keep], col[keep], rad[keep]
+    # dust lanes: dark, non-emissive grains on the inner (trailing) edge of each arm, slightly above the disk
+    nd = int(args.get('dustlanes', 260000)); k = rng.choice(4, nd, p=[0.32, 0.18, 0.32, 0.18])
+    r = r0*0.7 + rng.exponential(0.30, nd*2)[:nd]; keep = r < 0.95; r, k = r[keep], k[keep]; nd = len(r)
+    th = arm_theta(r, k) + 0.09 + rng.normal(0, 0.05, nd)
+    PD = np.stack([r*np.cos(th), r*np.sin(th), 0.004 + np.abs(rng.normal(0, 0.006, nd))], 1)*RG
+    radd = (0.05 + 0.07*rng.random(nd))*RG/46
+    if cav:
+        keep = clear(PD); PD, radd = PD[keep], radd[keep]
+
+    def pointcloud(name, P, rad, mat, col=None):
+        m = bpy.data.meshes.new(name); m.vertices.add(len(P)); m.vertices.foreach_set('co', P.astype(np.float32).ravel())
+        if col is not None:
+            ca_ = m.attributes.new('scol', 'FLOAT_COLOR', 'POINT'); ca_.data.foreach_set('color', col.ravel())
+        ra_ = m.attributes.new('srad', 'FLOAT', 'POINT'); ra_.data.foreach_set('value', rad.astype(np.float32))
+        o = bpy.data.objects.new(name, m); sc.collection.objects.link(o)
+        g = bpy.data.node_groups.new(name + 'gn', 'GeometryNodeTree')
+        g.interface.new_socket('Geometry', in_out='INPUT', socket_type='NodeSocketGeometry')
+        g.interface.new_socket('Geometry', in_out='OUTPUT', socket_type='NodeSocketGeometry')
+        gi = g.nodes.new('NodeGroupInput'); go = g.nodes.new('NodeGroupOutput')
+        m2p = g.nodes.new('GeometryNodeMeshToPoints'); na = g.nodes.new('GeometryNodeInputNamedAttribute')
+        na.data_type = 'FLOAT'; na.inputs['Name'].default_value = 'srad'
+        smt = g.nodes.new('GeometryNodeSetMaterial'); smt.inputs['Material'].default_value = mat
+        g.links.new(gi.outputs[0], m2p.inputs['Mesh']); g.links.new(na.outputs['Attribute'], m2p.inputs['Radius'])
+        g.links.new(m2p.outputs['Points'], smt.inputs['Geometry']); g.links.new(smt.outputs['Geometry'], go.inputs[0])
+        o.modifiers.new('pts', 'NODES').node_group = g
+        for a_ in ('visible_diffuse', 'visible_shadow', 'visible_glossy'): setattr(o, a_, False)
+        return o
     smat = bpy.data.materials.new('starmat'); smat.use_nodes = True; SN = smat.node_tree.nodes; SL = smat.node_tree.links
     SN.remove(SN['Principled BSDF'])
     at = SN.new('ShaderNodeAttribute'); at.attribute_name = 'scol'
     es = SN.new('ShaderNodeEmission'); es.inputs['Strength'].default_value = float(args.get('starpow', 6))
     SL.new(at.outputs['Color'], es.inputs['Color']); SL.new(es.outputs['Emission'], SN['Material Output'].inputs['Surface'])
-    gg = bpy.data.node_groups.new('pts', 'GeometryNodeTree')
-    gg.interface.new_socket('Geometry', in_out='INPUT', socket_type='NodeSocketGeometry')
-    gg.interface.new_socket('Geometry', in_out='OUTPUT', socket_type='NodeSocketGeometry')
-    gi = gg.nodes.new('NodeGroupInput'); go = gg.nodes.new('NodeGroupOutput')
-    m2p = gg.nodes.new('GeometryNodeMeshToPoints'); na = gg.nodes.new('GeometryNodeInputNamedAttribute')
-    na.data_type = 'FLOAT'; na.inputs['Name'].default_value = 'srad'
-    smt = gg.nodes.new('GeometryNodeSetMaterial'); smt.inputs['Material'].default_value = smat
-    gg.links.new(gi.outputs[0], m2p.inputs['Mesh']); gg.links.new(na.outputs['Attribute'], m2p.inputs['Radius'])
-    gg.links.new(m2p.outputs['Points'], smt.inputs['Geometry']); gg.links.new(smt.outputs['Geometry'], go.inputs[0])
-    G.modifiers.new('pts', 'NODES').node_group = gg
+    dmat = bpy.data.materials.new('lanemat'); dmat.use_nodes = True; DNN = dmat.node_tree.nodes
+    DNN.remove(DNN['Principled BSDF']); hb = DNN.new('ShaderNodeBsdfDiffuse'); hb.inputs['Color'].default_value = (0, 0, 0, 1)
+    dmat.node_tree.links.new(hb.outputs['BSDF'], DNN['Material Output'].inputs['Surface'])
+    G = pointcloud('galaxy', P, rad, smat, col)
+    GD = pointcloud('lanes', PD, radd, dmat); GD.parent = G
     for a_ in ('visible_diffuse', 'visible_shadow'): setattr(G, a_, False)
     ENVOBJS.append(G)
 
@@ -315,7 +373,7 @@ if args.get('env') == 'galaxy':
     bpy.ops.object.transform_apply(scale=True); grain.location = CENTER
     dm = bpy.data.materials.new('dust'); dm.use_nodes = True; DN = dm.node_tree.nodes
     DN.remove(DN['Principled BSDF']); de = DN.new('ShaderNodeEmission')
-    de.inputs['Color'].default_value = (1.0, 0.86, 0.68, 1); de.inputs['Strength'].default_value = float(args.get('dustpow', 14))
+    de.inputs['Color'].default_value = (1.0, 0.80, 0.60, 1); de.inputs['Strength'].default_value = float(args.get('dustpow', 14))
     dm.node_tree.links.new(de.outputs['Emission'], DN['Material Output'].inputs['Surface'])
     pi_ = DN.new('ShaderNodeParticleInfo'); pw_ = DN.new('ShaderNodeMath'); pw_.operation = 'POWER'; pw_.inputs[1].default_value = 3
     dm.node_tree.links.new(pi_.outputs['Random'], pw_.inputs[0])
@@ -345,7 +403,7 @@ if args.get('env') == 'galaxy':
     ENVOBJS += [em_]
     DUST = em_
     # warm fill from the galaxy core so the metal picks up its colour
-    area('g_core', (6, 10, 8), 6.0, float(args.get('corepow', 500)))
+    area('g_core', tuple(float(v) for v in args.get('coreloc', '6,10,8').split(',')), float(args.get('coresize', 6.0)), float(args.get('corepow', 500)))
     bpy.data.lights['g_core'].color = (1.0, 0.82, 0.62)
     cd.dof.aperture_fstop = float(args.get('fstop', 8))
 
@@ -435,4 +493,22 @@ for name in args.get('shots', ','.join(SHOTS)).split(','):
         sl.rotation_euler = (aim - sl.location).to_track_quat('-Z', 'Y').to_euler()
     sc.render.filepath = f'{OUT}/{name}.png'
     bpy.ops.render.render(write_still=True)
+    if args.get('savemask'):
+        # logo silhouette at full resolution (white logo, everything else dark) for alpha compositing
+        mk_ = bpy.data.materials.get('maskem')
+        kept = (W.data.materials[0], sc.cycles.samples, sc.cycles.use_denoising, sc.view_settings.view_transform, sc.view_settings.look, sc.view_settings.exposure, sc.render.film_transparent)
+        W.data.materials[0] = mk_; sc.cycles.samples = 16; sc.cycles.use_denoising = False
+        sc.view_settings.view_transform = 'Standard'; sc.view_settings.look = 'None'; sc.view_settings.exposure = 0; sc.render.film_transparent = False
+        gl_ = []
+        for mn_ in ('dust', 'starmat'):
+            mt_ = bpy.data.materials.get(mn_)
+            if mt_:
+                en_ = [n for n in mt_.node_tree.nodes if n.type == 'EMISSION'][0]; gl_.append((en_, en_.inputs['Strength'].default_value)); en_.inputs['Strength'].default_value = 0
+        bgn_ = wd.node_tree.nodes['Background']; gl_.append((bgn_, bgn_.inputs['Strength'].default_value)); bgn_.inputs['Strength'].default_value = 0
+        lights_ = [(l, l.energy) for l in bpy.data.lights]
+        for l, _ in lights_: l.energy = 0
+        sc.render.filepath = f'{OUT}/{name}-mask.png'; bpy.ops.render.render(write_still=True)
+        for l, e_ in lights_: l.energy = e_
+        for n_, v_ in gl_: n_.inputs['Strength'].default_value = v_
+        W.data.materials[0], sc.cycles.samples, sc.cycles.use_denoising, sc.view_settings.view_transform, sc.view_settings.look, sc.view_settings.exposure, sc.render.film_transparent = kept
     print('DONE', name, round(dist, 2), round(cd.shift_x, 3), round(cd.shift_y, 3), flush=True)
