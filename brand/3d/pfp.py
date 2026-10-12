@@ -97,6 +97,16 @@ fb.inputs['Base Color'].default_value = (0.035, 0.035, 0.035, 1)
 fb.inputs['Roughness'].default_value = 0.16
 fb.inputs['Specular IOR Level'].default_value = 0.35
 fl.data.materials.append(fm)
+# scale the floor's mirror reflection without touching its diffuse response
+_out = fm.node_tree.nodes['Material Output']; _b = fm.node_tree.nodes['Principled BSDF']
+_mix = fm.node_tree.nodes.new('ShaderNodeMixShader'); _tr = fm.node_tree.nodes.new('ShaderNodeBsdfTransparent')
+_dif = fm.node_tree.nodes.new('ShaderNodeBsdfDiffuse'); _dif.inputs['Color'].default_value = (0.035, 0.035, 0.035, 1)
+_add = fm.node_tree.nodes.new('ShaderNodeAddShader')
+_mix.inputs['Fac'].default_value = 1 - float(args.get('refl', 1.0))
+_hold = fm.node_tree.nodes.new('ShaderNodeHoldout')
+fm.node_tree.links.new(_b.outputs['BSDF'], _mix.inputs[1])
+fm.node_tree.links.new(_dif.outputs['BSDF'], _mix.inputs[2])
+fm.node_tree.links.new(_mix.outputs['Shader'], _out.inputs['Surface'])
 
 # ---------- world: black ----------
 wd = bpy.data.worlds.new('w'); sc.world = wd; wd.use_nodes = True
