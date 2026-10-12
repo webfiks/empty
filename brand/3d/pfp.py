@@ -282,9 +282,9 @@ if args.get('env') == 'galaxy':
     parts_P, parts_C, parts_R = [], [], []
     def add(P, C, R): parts_P.append(P); parts_C.append(C); parts_R.append(R)
     # bulge
-    n = int(NS*0.10); rb = np.abs(rng.normal(0, float(args.get('bulge', 0.055)), n)); u = rng.normal(size=(n, 3)); u /= np.linalg.norm(u, axis=1)[:, None]
+    n = int(NS*float(args.get('bulgefrac', 0.10))); rb = np.abs(rng.normal(0, float(args.get('bulge', 0.055)), n)); u = rng.normal(size=(n, 3)); u /= np.linalg.norm(u, axis=1)[:, None]
     P = u*rb[:, None]; P[:, 2] *= 0.6
-    add(P, OLD*rng.lognormal(0.5, 0.5, (n, 1))*1.6*float(args.get('bulgegain', 1.0)), np.full(n, 0.9))
+    add(P, OLD*rng.lognormal(0.5, 0.5, (n, 1))*1.6*float(args.get('bulgegain', 1.0)), np.full(n, float(args.get('bulgesize', 0.9))))
     # bar
     n = int(NS*0.07); P = rng.normal(0, 1, (n, 3))*[0.16, 0.045, 0.03]
     ca, sa = math.cos(barang), math.sin(barang); P = P @ np.array([[ca, sa, 0], [-sa, ca, 0], [0, 0, 1]])
@@ -322,7 +322,7 @@ if args.get('env') == 'galaxy':
         keep = clear(P); P, col, rad = P[keep], col[keep], rad[keep]
     # dust lanes: dark, non-emissive grains on the inner (trailing) edge of each arm, slightly above the disk
     nd = int(args.get('dustlanes', 260000)); k = rng.choice(4, nd, p=[0.32, 0.18, 0.32, 0.18])
-    r = r0*0.7 + rng.exponential(0.30, nd*2)[:nd]; keep = r < 0.95; r, k = r[keep], k[keep]; nd = len(r)
+    r = r0*0.7 + rng.exponential(0.30, nd*2)[:nd]; keep = (r < 0.95) & (r > float(args.get('lanemin', 0))); r, k = r[keep], k[keep]; nd = len(r)
     th = arm_theta(r, k) + 0.09 + rng.normal(0, 0.05, nd)
     PD = np.stack([r*np.cos(th), r*np.sin(th), 0.004 + np.abs(rng.normal(0, 0.006, nd))], 1)*RG
     radd = (0.05 + 0.07*rng.random(nd))*RG/46
